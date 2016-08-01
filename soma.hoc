@@ -1,0 +1,56 @@
+load_file("nrngui.hoc") 
+xopen("geo5038804.hoc")             // geometry file
+
+objref stim0, stim1, stim2, stim3, ncstim, syn, nc0, nc, nc2
+
+
+//inserisco proprietà passive
+forall {insert pas cm=1 g_pas=1/30000 e_pas=-65 Ra=150} 
+forall {
+	insert nax
+	insert kdr
+	 }
+
+celsius=34
+
+
+access soma
+soma {
+
+stim0= new NetStim(.5)
+stim0.number=1
+stim0.interval=10
+stim0.start=10
+
+stim1= new NetStim(.5)
+stim1.number=25
+stim1.interval=200
+stim1.start=1000
+
+stim2 = new NetStim(.5)
+stim2.number =4
+stim2.interval =10
+stim2.start =1000
+
+ncstim = new NetCon(stim1, stim2, 0, 0, 0.001)
+
+stim3= new NetStim(.5)
+stim3.number =1
+stim3.interval =10
+stim3.start =6200
+}
+
+
+soma{
+syn= new giada2TBS(.5)
+}
+
+nc0= new NetCon(stim0, syn, 0, 0, 0.8e-3)
+nc = new NetCon(stim2, syn, 0, 0, 0.8e-3)
+nc2= new NetCon(stim3, syn, 0, 0, 0.8e-3)
+
+
+
+
+
+load_file("somaconcanali.ses")

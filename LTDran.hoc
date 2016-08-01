@@ -1,0 +1,217 @@
+load_file("nrngui.hoc")
+cvode_active(1)
+load_file("geo5038804.hoc")
+
+
+numaxon=1
+numsoma=1
+numbasal  = 52
+numapical = 70
+numuser5  = 49
+objref stim0, stim1, stim2, stim3, ncstim, syn, nc0[100], nc[100], nc2[100], bsyn[100]
+objref g, b,c, distrx, distry, cdistry, p, xvec, r, rn, vec, weight, rx, xloc, dati
+
+dati = new File()
+
+load_file("biophysLTD.hoc")
+load_file("efheader.hoc")
+
+xvec = new Vector(100)
+weight= new Vector(100)
+xloc = new Vector(20)
+
+for jj = 0, 14{
+		xvec.x[jj]=jj
+		weight.x[jj]=jj 
+		xloc.x[jj]=jj/15
+	}
+
+seed=9 
+r = new Random()
+r.MCellRan4(seed) 
+
+rn = new Random()
+rn.MCellRan4(seed) 
+
+rx = new Random()
+rx.MCellRan4(seed) 
+
+access soma
+
+freq=50
+//geom_nseg()
+tot=0
+forall {tot=tot+nseg}
+distance()
+
+tstop=13500
+
+b = new VBox()
+b.intercept(1)
+g = new Graph()
+g.size(0,tstop,-70,30)
+g.addvar("soma[0].v(0.5)",1,1,2*tstop,0,2)
+g.xaxis(1)
+xpanel("")
+xpanel()
+b.intercept(0)
+b.map()
+
+p = new PlotShape()
+p.exec_menu("Shape Plot")
+p.size(-194.658,304.758,-223.667,609.667)
+p.variable("v")
+p.show(0)
+
+proc init() {
+
+  t=0
+
+  
+  finitialize(Vrest)
+
+	forall {
+		v = Vrest
+		if(ismembrane("nax") || ismembrane("na3")) {
+			ena=55
+		}
+		if(ismembrane("kdr") || ismembrane("kap") || ismembrane("kad")) {
+			ek=-90
+		}
+		if(ismembrane("hd")) {
+			ehd_hd=-30
+		}
+	}
+
+	finitialize(Vrest)
+	fcurrent()
+
+	forall {
+		for(x) {
+			if(ismembrane("na3") || ismembrane("nax")) {
+				e_pas(x)=v(x)+(ina(x)+ik(x))/g_pas(x)
+			}
+			if(ismembrane("hd")) {
+				e_pas(x)=e_pas(x)+i_hd(x)/g_pas(x)
+			}
+		}
+	cvode.re_init()
+	cvode.event(tstop)
+	access soma
+	g.begin()
+	}
+
+soma {
+
+stim0= new NetStim(.5)
+stim0.number=1
+stim0.interval=10
+stim0.start=10
+
+stim1= new NetStim(.5)
+stim1.number=10
+stim1.interval=1000
+stim1.start=500
+
+stim2 = new NetStim(.5)
+stim2.number =2
+stim2.interval =10
+stim2.start =500
+
+ncstim = new NetCon(stim1, stim2, 0, 0, 0.001)
+
+stim3= new NetStim(.5)
+stim3.number =1
+stim3.interval =10
+stim3.start =13000
+}
+
+proc synloc(){
+	for ii=0, 14 { 
+		apical_dendrite[xvec.x[ii]]{
+			bsyn[xvec.x[ii]]= new giada2TBS(xloc.x[ii])
+			bsyn[ii].loc(xloc.x[ii])
+		}
+	}
+} 
+
+synloc()
+
+proc select() { 
+	xvec.resize(0)
+	weight.resize(0)
+	xloc.resize(0)
+	for jj = 0, 14 {
+		xx = r.discunif(0, 69)
+		//xvec.append(xx)
+		yy = rn.uniform(0.5, 0.9)
+		//weight.append(yy) if (yy < 0 ) {weight.x[jj]=0}
+		zz = rx.uniform(0,1)
+		//xloc.append(zz)
+		while(xvec.contains(xx)) xx = r.repick()
+		xvec.append(xx)
+		while(weight.contains(yy)) yy = rn.repick()
+		weight.append(yy) if (yy < 0 ) {weight.x[jj]=0}
+		while(xloc.contains(zz)) zz = rx.repick()
+		xloc.append(zz)
+		print jj, xvec.x[jj], weight.x[jj], xloc.x[jj]
+		}
+synloc()
+}
+
+select()
+
+for ii = 0, 14 { 
+		nc0[ii]= new NetCon(stim0, bsyn[xvec.x[ii]], 0, 0, weight.x[ii]*1e-3)
+		nc[ii] = new NetCon(stim1, bsyn[xvec.x[ii]], 0, 0, weight.x[ii]*1e-3)
+		nc2[ii]= new NetCon(stim2, bsyn[xvec.x[ii]], 0, 0, weight.x[ii]*1e-3)
+		}
+
+proc advance() {
+	fadvance()
+	g.plot(t)
+	g.flush()
+	p.flush()
+	doNotify()
+	}
+dati.aopen("ltd.txt")
+proc runp() {
+//run()
+	distrx=new Vector()
+	distry=new Vector()
+	forsec "apical_dendrite" {
+		for (x) if (x>0 && x<1) {
+			if (diam>=0.) {
+			distrx.append(distance(x)) 
+			distry.append(vmax_ds(x)-Vrest)
+			}
+		}
+	}
+	distry.mark(c,distrx,"O",3,3,2)
+
+	distrx=new Vector()
+	distry=new Vector()
+	forsec "user5" {
+		for (x) if (x>0 && x<1) {
+			if (diam>=0) {
+			distrx.append(distance(x)) 
+			distry.append(vmax_ds(x)-Vrest)
+			}
+		}
+	}
+	distry.mark(c,distrx,"t",5,$1,1)
+	c.flush()
+	doNotify()
+
+}
+
+proc runm() {
+runp(1)
+}
+tstop=40000
+run()
+for jj=0,14{
+dati.printf("%g\t%g\t%g\t%g\t%g\t%g\t%g\t%g\t\n", seed, soma[0].vmax1_ds2(0.5)+65,  soma[0].vmax2_ds2(0.5)+65, xvec.x[jj] , xloc.x[jj], weight.x[jj], apical_dendrite[xvec.x[jj]].vmax1_ds2(xloc.x[jj])+65, apical_dendrite[xvec.x[jj]].vmax2_ds2(xloc.x[jj])+65)
+}
+dati.close("ltd.txt")
+//load_file("TBSall.ses")
