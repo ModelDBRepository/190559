@@ -4,7 +4,7 @@ xopen("geo5038804.hoc")             // geometry file
 objref stim0, stim1, stim2, stim3, ncstim, syn, nc0, nc, nc2
 
 
-//inserisco propriet‡ passive
+//inserisco propriet√† passive
 forall {insert pas cm=1 g_pas=1/30000 e_pas=-65 Ra=150} 
 forall {
 	insert nax
